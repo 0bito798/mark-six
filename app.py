@@ -127,7 +127,7 @@ def _build_database_uri(db_path):
 
     db_type = os.environ.get("DB_TYPE", "sqlite").lower()
     if db_type in ("mysql", "mariadb"):
-        host = os.environ.get("DB_HOST", "localhost")
+        host = os.environ.get("DB_HOST", "localhost").strip()
         port = os.environ.get("DB_PORT", "3306")
         name = os.environ.get("DB_NAME", "mark_six")
         user = os.environ.get("DB_USER", "root")
