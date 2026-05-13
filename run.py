@@ -31,14 +31,14 @@ def main():
         print("- 请在管理后台配置AI API和邮箱服务")
         
         print("\n启动Web服务器...")
-        print("访问地址: http://localhost:5000")
+        print("访问地址: http://localhost:5001")
         print("按 Ctrl+C 停止服务器")
         print("=" * 60)
         
         # 启动Flask应用
         app.run(
             host='0.0.0.0',
-            port=5000,
+            port=5001,
             debug=True,
             use_reloader=False  # 避免重复初始化
         )
