@@ -121,6 +121,8 @@ def _should_log_startup():
 def _build_database_uri(db_path):
     db_url = os.environ.get("DATABASE_URL")
     if db_url:
+        if db_url.startswith("mysql://"):
+            db_url = db_url.replace("mysql://", "mysql+pymysql://")
         return db_url
 
     db_type = os.environ.get("DB_TYPE", "sqlite").lower()
