@@ -47,4 +47,5 @@ def test_dashboard_renders_for_valid_session():
     response = client.get('/user/dashboard')
 
     assert response.status_code == 200
-    assert '个人中心' in response.get_data(as_text=True)
+    body = response.get_data(as_text=True)
+    assert 'profileModal' in body
