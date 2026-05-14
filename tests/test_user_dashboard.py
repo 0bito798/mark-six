@@ -15,7 +15,7 @@ def dashboard_user():
         yield user
 
 
-def test_dashboard_redirects_when_session_user_is_missing():
+def test_dashboard_redirects_when_session_references_deleted_user():
     client = app.test_client()
     with client.session_transaction() as sess:
         sess['user_id'] = NONEXISTENT_USER_ID
