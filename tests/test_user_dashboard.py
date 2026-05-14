@@ -9,6 +9,7 @@ NONEXISTENT_USER_ID = 999999
 
 @pytest.fixture
 def dashboard_user():
+    """Use the seeded admin account from the bundled database."""
     with app.app_context():
         user = User.query.filter_by(username='admin').first()
         assert user is not None
