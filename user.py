@@ -238,7 +238,8 @@ def login_required(f):
             return redirect(url_for('auth.login'))
         user = User.query.get(user_id)
         if not user:
-            session.clear()
+            for key in ('user_id', 'username', 'is_admin', 'is_active'):
+                session.pop(key, None)
             flash('登录状态已失效，请重新登录', 'error')
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
@@ -255,7 +256,8 @@ def active_required(f):
 
         user = User.query.get(user_id)
         if not user:
-            session.clear()
+            for key in ('user_id', 'username', 'is_admin', 'is_active'):
+                session.pop(key, None)
             flash('请先登录', 'error')
             return redirect(url_for('auth.login'))
 
@@ -1199,6 +1201,5 @@ def analytics():
                           recent_predictions=recent_predictions,
                           trend_data=trend_data,
                           get_number_color=get_number_color)
-
 
 
