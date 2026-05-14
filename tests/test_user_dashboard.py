@@ -2,6 +2,8 @@ from app import app
 from models import User, db
 from werkzeug.security import generate_password_hash
 
+NONEXISTENT_USER_ID = 999999
+
 
 def _ensure_admin_user():
     with app.app_context():
@@ -24,7 +26,7 @@ def _ensure_admin_user():
 def test_dashboard_redirects_when_session_user_is_missing():
     client = app.test_client()
     with client.session_transaction() as sess:
-        sess['user_id'] = 999999
+        sess['user_id'] = NONEXISTENT_USER_ID
         sess['username'] = 'ghost'
         sess['is_admin'] = False
         sess['is_active'] = True
@@ -49,3 +51,4 @@ def test_dashboard_renders_for_valid_session():
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert 'profileModal' in body
+    assert user.username in body
