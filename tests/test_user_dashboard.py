@@ -10,18 +10,9 @@ NONEXISTENT_USER_ID = 999999
 @pytest.fixture
 def dashboard_user():
     with app.app_context():
-        user = User(
-            username='dashboard-user-test',
-            email='dashboard-user-test@example.com',
-            password_hash=generate_password_hash('admin123'),
-            is_active=True,
-            is_admin=False,
-        )
-        db.session.add(user)
-        db.session.commit()
+        user = User.query.filter_by(username='admin').first()
+        assert user is not None
         yield user
-        db.session.delete(user)
-        db.session.commit()
 
 
 def test_dashboard_redirects_when_session_user_is_missing():
