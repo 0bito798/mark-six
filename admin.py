@@ -937,8 +937,8 @@ def bets():
 
         summary = {
             'total': stats[0] or 0,
-            'total_stake': stats[1] or 0,
-            'total_profit': stats[2] or 0,
+            'total_stake': float(stats[1]) if stats[1] is not None else 0.0,
+            'total_profit': float(stats[2]) if stats[2] is not None else 0.0,
             'win_count': stats[3] or 0,
             'lose_count': stats[4] or 0,
             'draw_count': stats[5] or 0,
