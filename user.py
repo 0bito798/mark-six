@@ -333,7 +333,7 @@ def dashboard():
             func.sum(normal_hit_expr).label('normal_hits'),
         ).first()
 
-        total_count = agg.total or 0
+        total_count = int(agg.total) if agg.total else 0
         if total_count == 0:
             return 0.0
 
@@ -584,9 +584,9 @@ def predictions():
     ).filter(PredictionRecord.user_id == session['user_id']).one()
 
     total_predictions = stats_row[0] or 0
-    updated_predictions = stats_row[1] or 0
-    special_hit_predictions = stats_row[2] or 0
-    normal_hit_predictions = stats_row[3] or 0
+    updated_predictions = int(stats_row[1]) if stats_row[1] else 0
+    special_hit_predictions = int(stats_row[2]) if stats_row[2] else 0
+    normal_hit_predictions = int(stats_row[3]) if stats_row[3] else 0
     wrong_predictions = stats_row[4] or 0
 
     accurate_predictions = special_hit_predictions + normal_hit_predictions
