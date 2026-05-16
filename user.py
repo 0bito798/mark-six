@@ -99,9 +99,9 @@ def _calculate_accuracy_summary(query):
         func.sum(normal_hit_expr).label('normal_hits'),
     ).first()
 
-    total = agg.total or 0
-    special_hits = agg.special_hits or 0
-    normal_hits = agg.normal_hits or 0
+    total = int(agg.total) if agg.total else 0
+    special_hits = int(agg.special_hits) if agg.special_hits else 0
+    normal_hits = int(agg.normal_hits) if agg.normal_hits else 0
     correct = special_hits + normal_hits
 
     return {
@@ -337,8 +337,8 @@ def dashboard():
         if total_count == 0:
             return 0.0
 
-        special_hits = agg.special_hits or 0
-        normal_hits = agg.normal_hits or 0
+        special_hits = int(agg.special_hits) if agg.special_hits else 0
+        normal_hits = int(agg.normal_hits) if agg.normal_hits else 0
         total_hits = special_hits + normal_hits
         return round((total_hits / total_count) * 100, 1)
 
