@@ -29,6 +29,10 @@ SMART_STRATEGY_PREFIX = '智能优选（本期采用：'
 def _strategy_label_map():
     return {item["key"]: item["label"] for item in STRATEGY_META}
 
+def _clear_auth_session():
+    for key in ('user_id', 'username', 'is_admin', 'is_active'):
+        session.pop(key, None)
+
 def _get_prediction_display_info(prediction):
     raw_text = (prediction.prediction_text or '').strip()
     if raw_text.startswith(SMART_STRATEGY_PREFIX):
@@ -232,8 +236,14 @@ def _build_learning_comparison():
 def login_required(f):
     """登录验证装饰器"""
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        user_id = session.get('user_id')
+        if not user_id:
             flash('请先登录', 'error')
+            return redirect(url_for('auth.login'))
+        user = User.query.get(user_id)
+        if not user:
+            _clear_auth_session()
+            flash('登录状态已失效，请重新登录', 'error')
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     decorated_function.__name__ = f.__name__
@@ -249,7 +259,7 @@ def active_required(f):
 
         user = User.query.get(user_id)
         if not user:
-            session.clear()
+            _clear_auth_session()
             flash('请先登录', 'error')
             return redirect(url_for('auth.login'))
 
@@ -1193,7 +1203,4 @@ def analytics():
                           recent_predictions=recent_predictions,
                           trend_data=trend_data,
                           get_number_color=get_number_color)
-
-
-
 
