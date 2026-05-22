@@ -246,9 +246,9 @@ def _calculate_accuracy_summary(query):
         func.sum(normal_hit_expr).label('normal_hits'),
     ).first()
 
-    total = agg.total or 0
-    special_hits = agg.special_hits or 0
-    normal_hits = agg.normal_hits or 0
+    total = int(agg.total) if agg.total else 0
+    special_hits = int(agg.special_hits) if agg.special_hits else 0
+    normal_hits = int(agg.normal_hits) if agg.normal_hits else 0
     correct = special_hits + normal_hits
 
     return {
@@ -665,11 +665,11 @@ def dashboard():
             func.sum(special_hit_expr).label('special_hits'),
         ).first()
 
-        total_count = agg.total or 0
+        total_count = int(agg.total) if agg.total else 0
         if total_count == 0:
             return 0.0
 
-        special_hits = agg.special_hits or 0
+        special_hits = int(agg.special_hits) if agg.special_hits else 0
         return round((special_hits / total_count) * 100, 1)
 
     # 计算各策略命中率
@@ -924,9 +924,9 @@ def predictions():
     ).filter(PredictionRecord.user_id == session['user_id']).one()
 
     total_predictions = stats_row[0] or 0
-    updated_predictions = stats_row[1] or 0
-    special_hit_predictions = stats_row[2] or 0
-    normal_hit_predictions = stats_row[3] or 0
+    updated_predictions = int(stats_row[1]) if stats_row[1] else 0
+    special_hit_predictions = int(stats_row[2]) if stats_row[2] else 0
+    normal_hit_predictions = int(stats_row[3]) if stats_row[3] else 0
     wrong_predictions = stats_row[4] or 0
 
     accurate_predictions = special_hit_predictions
@@ -1195,9 +1195,9 @@ def ml_records():
     ).one()
 
     total_ml_predictions = stats_row[0] or 0
-    updated_predictions = stats_row[1] or 0
-    special_hit_predictions = stats_row[2] or 0
-    normal_hit_predictions = stats_row[3] or 0
+    updated_predictions = int(stats_row[1]) if stats_row[1] else 0
+    special_hit_predictions = int(stats_row[2]) if stats_row[2] else 0
+    normal_hit_predictions = int(stats_row[3]) if stats_row[3] else 0
     wrong_predictions = stats_row[4] or 0
     pending_predictions = max(total_ml_predictions - updated_predictions, 0)
     special_hit_rate = (special_hit_predictions / updated_predictions * 100) if updated_predictions > 0 else 0
