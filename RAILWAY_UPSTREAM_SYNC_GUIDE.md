@@ -35,3 +35,14 @@ Railway 环境属于无状态设计，且没有自动触发 `init_database()`。
 
 ### 6. APP 接口配置 (附加: `mobile/mark_six/lib/config.dart`)
 - 如果需要使用 Flutter 手机端 APP 登录自己的后端，记得进去将 `baseUrl` 的硬编码服务器域名，改回自己在 Railway 上生成的真实域名并重新编译 APP。
+### 7. 移除原作者水印与页脚推广链接 (涉及文件：`templates/*.html`)
+上游代码会在页面背景注入 GitHub 仓库推广文字和底部悬浮水印。由于各页面的行号会随着版本更新而改变，**切勿使用固定行号修改，必须使用关键字或正则特征进行匹配和删除**。请全面检查 `templates/index.html`，`templates/admin/base.html`，`templates/user/base.html` 等主模板：
+- **清理 CSS 水印代码**：扫描并删除包含 `.github-watermark` 的整块 CSS 代码。
+- **清理 HTML 水印节点**：全局替换并删除 `<div class="github-watermark" aria-hidden="true"></div>`。
+- **清理底部页脚**：全局搜索 `<footer class="app-footer">` 的整个闭合块（包含内部的 `GitHub：` 相关字眼链接），并将其删除；或者匹配 `href="https://github.com/e5sub/mark-six"` 进行对应清除。
+
+### 8. 注入主题切换器控制 (浅色/深色/自动模式)
+上游站点的 CSS 是基于一套写死的深色背景变量设计的，我们需要为其挂载自适应主题脚本。
+- **确认挂件脚本存在**：确保项目内包含自定义的 `static/js/theme-switcher.js`（它利用 `data-theme="light"` 结合 CSS滤镜 `filter: invert(1)` 实现智能反色，并挂载左下角悬浮按钮）。如果缺失，请 AI 重新生成注入该 JS 功能脚本。
+- **注入标签**：向主布局文件（如 `templates/index.html`、`templates/user/base.html`、`templates/admin/base.html`、`templates/layout.html`）中的 `</body>` 闭合标签之前（使用特征匹配 `</body>` 即不限制行号），通过替换的方式插入：
+`<script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>`。
