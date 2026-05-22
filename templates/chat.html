@@ -852,6 +852,10 @@
                     </li>
                 </ul>
                 <div class="navbar-nav">
+                    <span class="theme-switcher-slot" aria-label="主题切换"></span>
+                    <span class="nav-link nav-user-label">
+                        {{ session.get('username', '用户') }}
+                    </span>
                     {% if session.get('is_admin') %}
                     <a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="background: rgba(255,215,0,0.2); border-radius: 8px;" onmouseover="this.style.background='rgba(255,215,0,0.4)'" onmouseout="this.style.background='rgba(255,215,0,0.2)'">
                         <i class="fas fa-crown"></i> 管理控制台
@@ -1404,5 +1408,6 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 </script>
+<script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
 </body>
 </html>

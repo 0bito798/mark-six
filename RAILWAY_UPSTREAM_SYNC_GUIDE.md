@@ -43,6 +43,8 @@ Railway 环境属于无状态设计，且没有自动触发 `init_database()`。
 
 ### 8. 注入主题切换器控制 (浅色/深色/自动模式)
 上游站点的 CSS 是基于一套写死的深色背景变量设计的，我们需要为其挂载自适应主题脚本。
-- **确认挂件脚本存在**：确保项目内包含自定义的 `static/js/theme-switcher.js`（它利用 `data-theme="light"` 结合 CSS滤镜 `filter: invert(1)` 实现智能反色，并挂载左下角悬浮按钮）。如果缺失，请 AI 重新生成注入该 JS 功能脚本。
-- **注入标签**：向主布局文件（如 `templates/index.html`、`templates/user/base.html`、`templates/admin/base.html`、`templates/layout.html`）中的 `</body>` 闭合标签之前（使用特征匹配 `</body>` 即不限制行号），通过替换的方式插入：
+- **确认挂件脚本存在**：确保项目内包含自定义的 `static/js/theme-switcher.js`。当前实现不再使用 `filter: invert(1)`，而是通过 `data-theme="light"` 结合真实 CSS 覆盖做浅色模式。
+- **挂件位置**：主题按钮必须挂在右上角用户名左侧，桌面显示胶囊按钮，手机端收缩为 34×34 图标按钮，不要再放回左下角。
+- **注入标签**：向主布局文件（如 `templates/index.html`、`templates/user/base.html`、`templates/admin/base.html`、`templates/layout.html`、`templates/chat.html`）中的 `</body>` 闭合标签之前（使用特征匹配 `</body>` 即不限制行号），通过替换的方式插入：
 `<script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>`。
+- **浅色覆盖范围**：如果上游再次覆盖前端样式，优先恢复首页、用户中心、管理后台、聊天页和认证页的浅色覆盖；重点检查用户名、地区切换、机器学习按钮、卡片、表格、表单、徽章、标题条和聊天容器。

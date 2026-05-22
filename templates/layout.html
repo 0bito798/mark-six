@@ -38,6 +38,9 @@
                 </ul>
                 <ul class="navbar-nav">
                     {% if current_user.is_authenticated %}
+                        <li class="nav-item d-flex align-items-center">
+                            <span class="theme-switcher-slot" aria-label="主题切换"></span>
+                        </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 {{ current_user.username }}
