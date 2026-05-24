@@ -12,8 +12,10 @@ echo "数据目录内容:"
 ls -la /app/data
 
 DB_TYPE_LOWER=$(echo "${DB_TYPE:-}" | tr '[:upper:]' '[:lower:]')
-if [ "$DB_TYPE_LOWER" = "mysql" ] || [ "$DB_TYPE_LOWER" = "mariadb" ] || echo "${DATABASE_URL:-}" | grep -qi "^mysql"; then
+if [ "$DB_TYPE_LOWER" = "mysql" ] || [ "$DB_TYPE_LOWER" = "mariadb" ] || echo "${DATABASE_URL:-}" | grep -qi "^mysql" || echo "${MYSQL_URL:-}" | grep -qi "^mysql" || [ -n "${MYSQLHOST:-}" ]; then
     echo "MySQL configured, skipping sqlite initialization."
+    echo "Running database initialization..."
+    python3 -c "from app import init_database; init_database()"
     echo "Starting service..."
     exec "$@"
 fi
@@ -39,4 +41,5 @@ else
 fi
 
 echo "正在启动 Gunicorn 服务器..."
+python3 -c "from app import init_database; init_database()"
 exec "$@"

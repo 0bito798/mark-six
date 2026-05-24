@@ -8,16 +8,13 @@
 import os
 import sqlite3
 from datetime import datetime
+from railway_db import is_mysql_configured
 
 # 数据库文件路径
 DB_PATH = os.path.join(os.getcwd(), 'data', 'lottery_system.db')
-DB_TYPE = os.environ.get("DB_TYPE", "sqlite").lower()
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 def _using_mysql():
-    if DB_TYPE in ("mysql", "mariadb"):
-        return True
-    return DATABASE_URL.lower().startswith("mysql")
+    return is_mysql_configured()
 
 def check_database_exists():
     """检查数据库是否存在"""

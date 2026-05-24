@@ -5521,7 +5521,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class UpdateService {
-  static const String _owner = 'e5sub';
+  static const String _owner = '0bito798';
   static const String _repo = 'mark-six';
   static const String _apkName = 'app-release.apk';
   static const String _proxy = 'https://gh-proxy.com/';

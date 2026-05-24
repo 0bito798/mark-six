@@ -4,6 +4,7 @@ from collections import OrderedDict
 
 from flask import Blueprint, jsonify, request, session
 from sqlalchemy import func, case, or_
+from railway_db import float_or_zero, int_or_zero
 
 from models import (
     ActivationCode,
@@ -1172,11 +1173,11 @@ def api_manual_bets_summary():
     settled = [r for r in records if r.total_profit is not None]
     pending = [r for r in records if r.total_profit is None]
 
-    total_stake = sum((r.total_stake or 0) for r in settled)
-    total_profit = sum((r.total_profit or 0) for r in settled)
-    win_count = sum(1 for r in settled if (r.total_profit or 0) > 0)
-    lose_count = sum(1 for r in settled if (r.total_profit or 0) < 0)
-    draw_count = sum(1 for r in settled if (r.total_profit or 0) == 0)
+    total_stake = sum(float_or_zero(r.total_stake) for r in settled)
+    total_profit = sum(float_or_zero(r.total_profit) for r in settled)
+    win_count = sum(1 for r in settled if float_or_zero(r.total_profit) > 0)
+    lose_count = sum(1 for r in settled if float_or_zero(r.total_profit) < 0)
+    draw_count = sum(1 for r in settled if float_or_zero(r.total_profit) == 0)
 
     return jsonify(
         {
@@ -1586,9 +1587,9 @@ def _calculate_accuracy(query):
         func.sum(normal_hit_expr).label("normal_hits"),
     ).first()
 
-    total = agg.total or 0
-    special_hits = agg.special_hits or 0
-    normal_hits = agg.normal_hits or 0
+    total = int_or_zero(agg.total)
+    special_hits = int_or_zero(agg.special_hits)
+    normal_hits = int_or_zero(agg.normal_hits)
     correct = special_hits + normal_hits
     special_hit_rate = round((special_hits / total) * 100, 1) if total else 0.0
     normal_hit_rate = round((normal_hits / total) * 100, 1) if total else 0.0

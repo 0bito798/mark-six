@@ -1,1 +1,1 @@
-const String baseUrl = 'https://6.071717.xyz';
+const String baseUrl = 'https://mark-six-production.up.railway.app';

@@ -13,14 +13,15 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from collections import Counter
 import re
-from urllib.parse import quote_plus
 from datetime import datetime, timedelta
 import time
+from sqlalchemy import inspect, text
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
 
 # 导入用户系统模块
 from models import db, User, PredictionRecord, SystemConfig, InviteCode, LotteryDraw, ManualBetRecord, BacktestRun
+from railway_db import build_database_uri, is_mysql_configured
 from auth import auth_bp
 from admin import admin_bp
 from user import user_bp
@@ -125,20 +126,7 @@ def _should_log_startup():
     return True
 
 def _build_database_uri(db_path):
-    db_url = os.environ.get("DATABASE_URL")
-    if db_url:
-        return db_url
-
-    db_type = os.environ.get("DB_TYPE", "sqlite").lower()
-    if db_type in ("mysql", "mariadb"):
-        host = os.environ.get("DB_HOST", "localhost")
-        port = os.environ.get("DB_PORT", "3306")
-        name = os.environ.get("DB_NAME", "mark_six")
-        user = os.environ.get("DB_USER", "root")
-        password = quote_plus(os.environ.get("DB_PASSWORD", ""))
-        return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset=utf8mb4"
-
-    return f"sqlite:///{db_path}"
+    return build_database_uri(db_path)
 
 def _mask_db_uri(uri):
     return re.sub(r'//([^:/@]+):([^@]+)@', r'//\1:***@', uri)
@@ -508,11 +496,42 @@ if _should_log_startup():
 # 初始化数据库
 db.init_app(app)
 
+def _mysql_column_exists(table_name, column_name):
+    inspector = inspect(db.engine)
+    return column_name in {column["name"] for column in inspector.get_columns(table_name)}
+
+def _mysql_add_column_if_missing(table_name, column_name, column_sql):
+    if _mysql_column_exists(table_name, column_name):
+        return False
+    db.session.execute(text(f"ALTER TABLE `{table_name}` ADD COLUMN `{column_name}` {column_sql}"))
+    db.session.commit()
+    print(f"MySQL schema column added: {table_name}.{column_name}")
+    return True
+
+def ensure_mysql_schema_columns():
+    if not is_mysql_configured():
+        return
+
+    columns = [
+        ("user", "auto_prediction_regions", "VARCHAR(20) DEFAULT 'hk,macau'"),
+        ("user", "show_normal_numbers", "BOOLEAN DEFAULT 0"),
+        ("prediction_record", "prediction_metadata", "TEXT"),
+        ("manual_bet_records", "bettor_name", "VARCHAR(50)"),
+    ]
+
+    try:
+        for table_name, column_name, column_sql in columns:
+            _mysql_add_column_if_missing(table_name, column_name, column_sql)
+    except Exception:
+        db.session.rollback()
+        raise
+
 def ensure_runtime_database_schema():
     """在应用启动时尽早补齐数据库结构，避免WSGI模式下缺列报错。"""
     with app.app_context():
         try:
             db.create_all()
+            ensure_mysql_schema_columns()
         except Exception as e:
             print(f"创建数据库表时出错: {e}")
 
@@ -8852,6 +8871,7 @@ def check_user_activation():
 def init_database():
     with app.app_context():
         db.create_all()
+        ensure_mysql_schema_columns()
         
         # 自动检查并更新数据库结构（邀请系统）
         from auto_update_db import check_and_update_database

@@ -11,11 +11,9 @@ import sqlite3
 from datetime import datetime
 import hashlib
 import uuid
+from railway_db import is_mysql_configured
 
-DB_TYPE = os.environ.get("DB_TYPE", "sqlite").lower()
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-
-if DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql"):
+if is_mysql_configured():
     print("MySQL configured, skipping sqlite database creation.")
     sys.exit(0)
 
