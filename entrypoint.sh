@@ -1,42 +1,59 @@
 #!/bin/sh
 export FLASK_APP=app
 
-# 确保数据目录存在并有正确的权限
 mkdir -p /app/data
 chmod 777 /app/data
-chown -R nobody:nogroup /app/data 2>/dev/null || echo "无法更改所有者，继续执行..."
+chown -R nobody:nogroup /app/data 2>/dev/null || echo "Unable to change data owner, continuing..."
 
-# 打印当前目录和数据目录内容
-echo "当前目录: $(pwd)"
-echo "数据目录内容:"
+echo "Current directory: $(pwd)"
+echo "Data directory contents:"
 ls -la /app/data
 
-DB_TYPE_LOWER=$(echo "${DB_TYPE:-}" | tr '[:upper:]' '[:lower:]')
-if [ "$DB_TYPE_LOWER" = "mysql" ] || [ "$DB_TYPE_LOWER" = "mariadb" ] || echo "${DATABASE_URL:-}" | grep -qi "^mysql"; then
+trim_env() {
+    printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+DB_TYPE_LOWER=$(trim_env "${DB_TYPE:-}" | tr '[:upper:]' '[:lower:]')
+DATABASE_URL_TRIMMED=$(trim_env "${DATABASE_URL:-}")
+MYSQL_URL_TRIMMED=$(trim_env "${MYSQL_URL:-}")
+MYSQLHOST_TRIMMED=$(trim_env "${MYSQLHOST:-}")
+DATABASE_URL_LOWER=$(printf '%s' "$DATABASE_URL_TRIMMED" | tr '[:upper:]' '[:lower:]')
+MYSQL_URL_LOWER=$(printf '%s' "$MYSQL_URL_TRIMMED" | tr '[:upper:]' '[:lower:]')
+MYSQL_CONFIGURED=0
+
+case "$DATABASE_URL_LOWER" in
+    mysql://*|mysql+*|mariadb://*|mariadb+*) MYSQL_CONFIGURED=1 ;;
+esac
+
+case "$MYSQL_URL_LOWER" in
+    mysql://*|mysql+*|mariadb://*|mariadb+*) MYSQL_CONFIGURED=1 ;;
+esac
+
+if [ "$DB_TYPE_LOWER" = "mysql" ] || [ "$DB_TYPE_LOWER" = "mariadb" ] || [ -n "$MYSQLHOST_TRIMMED" ]; then
+    MYSQL_CONFIGURED=1
+fi
+
+if [ "$MYSQL_CONFIGURED" = "1" ]; then
     echo "MySQL configured, skipping sqlite initialization."
-    echo "Starting service..."
-    exec "$@"
-fi
-
-# 检查数据库文件是否存在
-if [ ! -f /app/data/lottery_system.db ]; then
-    echo "数据库文件不存在，正在初始化数据库..."
-    # 使用create_db.py脚本创建数据库
-    python create_db.py
-    
-    # 再次检查数据库文件是否创建成功
-    if [ -f /app/data/lottery_system.db ]; then
-        echo "数据库文件创建成功: $(ls -la /app/data/lottery_system.db)"
-        # 确保数据库文件权限正确
-        chmod 666 /app/data/lottery_system.db
-    else
-        echo "警告: 数据库文件创建失败!"
-    fi
 else
-    echo "数据库文件已存在: $(ls -la /app/data/lottery_system.db)"
-    # 确保现有数据库文件权限正确
-    chmod 666 /app/data/lottery_system.db
+    if [ ! -f /app/data/lottery_system.db ]; then
+        echo "SQLite database file not found, initializing..."
+        python create_db.py
+
+        if [ -f /app/data/lottery_system.db ]; then
+            echo "SQLite database created: $(ls -la /app/data/lottery_system.db)"
+            chmod 666 /app/data/lottery_system.db
+        else
+            echo "Warning: SQLite database file was not created."
+        fi
+    else
+        echo "SQLite database file exists: $(ls -la /app/data/lottery_system.db)"
+        chmod 666 /app/data/lottery_system.db
+    fi
 fi
 
-echo "正在启动 Gunicorn 服务器..."
+echo "Running database initialization..."
+python3 -c "from app import init_database; init_database()"
+
+echo "Starting service..."
 exec "$@"

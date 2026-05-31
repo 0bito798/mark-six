@@ -18,6 +18,7 @@ from models import (
     db,
 )
 from auth import send_activation_request_notification
+from numeric_utils import float_or_zero
 
 
 mobile_api_bp = Blueprint("mobile_api", __name__, url_prefix="/api/mobile")
@@ -1142,14 +1143,18 @@ def api_manual_bets_list():
                 "selected_zodiacs": record.selected_zodiacs or "",
                 "selected_colors": record.selected_colors or "",
                 "selected_parity": record.selected_parity or "",
-                "odds_number": record.odds_number,
-                "odds_zodiac": record.odds_zodiac,
-                "odds_color": record.odds_color,
-                "odds_parity": record.odds_parity,
-                "stake_special": record.stake_special,
-                "stake_common": record.stake_common,
-                "total_stake": record.total_stake,
-                "total_profit": record.total_profit,
+                "odds_number": float_or_zero(record.odds_number),
+                "odds_zodiac": float_or_zero(record.odds_zodiac),
+                "odds_color": float_or_zero(record.odds_color),
+                "odds_parity": float_or_zero(record.odds_parity),
+                "stake_special": float_or_zero(record.stake_special),
+                "stake_common": float_or_zero(record.stake_common),
+                "total_stake": float_or_zero(record.total_stake),
+                "total_profit": (
+                    float_or_zero(record.total_profit)
+                    if record.total_profit is not None
+                    else None
+                ),
                 "special_number": record.special_number,
                 "special_zodiac": record.special_zodiac,
                 "special_color": record.special_color,
@@ -1179,11 +1184,11 @@ def api_manual_bets_summary():
     settled = [r for r in records if r.total_profit is not None]
     pending = [r for r in records if r.total_profit is None]
 
-    total_stake = sum((r.total_stake or 0) for r in settled)
-    total_profit = sum((r.total_profit or 0) for r in settled)
-    win_count = sum(1 for r in settled if (r.total_profit or 0) > 0)
-    lose_count = sum(1 for r in settled if (r.total_profit or 0) < 0)
-    draw_count = sum(1 for r in settled if (r.total_profit or 0) == 0)
+    total_stake = sum(float_or_zero(r.total_stake) for r in settled)
+    total_profit = sum(float_or_zero(r.total_profit) for r in settled)
+    win_count = sum(1 for r in settled if float_or_zero(r.total_profit) > 0)
+    lose_count = sum(1 for r in settled if float_or_zero(r.total_profit) < 0)
+    draw_count = sum(1 for r in settled if float_or_zero(r.total_profit) == 0)
 
     return jsonify(
         {

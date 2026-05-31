@@ -9,6 +9,7 @@ import json
 import threading
 import time
 from collections import OrderedDict
+from numeric_utils import int_or_zero
 
 user_bp = Blueprint('user', __name__, url_prefix='/user')
 
@@ -773,11 +774,11 @@ def dashboard():
             func.sum(special_hit_expr).label('special_hits'),
         ).first()
 
-        total_count = agg.total or 0
+        total_count = int_or_zero(agg.total)
         if total_count == 0:
             return 0.0
 
-        special_hits = agg.special_hits or 0
+        special_hits = int_or_zero(agg.special_hits)
         return round((special_hits / total_count) * 100, 1)
 
     # 计算各策略命中率
@@ -1107,11 +1108,11 @@ def _get_ml_stats(user_id):
         PredictionRecord.strategy == 'ml',
     ).one()
 
-    total_ml_predictions = stats_row[0] or 0
-    updated_predictions = stats_row[1] or 0
-    special_hit_predictions = stats_row[2] or 0
-    normal_hit_predictions = stats_row[3] or 0
-    wrong_predictions = stats_row[4] or 0
+    total_ml_predictions = int_or_zero(stats_row[0])
+    updated_predictions = int_or_zero(stats_row[1])
+    special_hit_predictions = int_or_zero(stats_row[2])
+    normal_hit_predictions = int_or_zero(stats_row[3])
+    wrong_predictions = int_or_zero(stats_row[4])
     current_special_hit_streak = _calculate_current_special_hit_streak()
     current_miss_streak = _calculate_current_miss_streak()
     pending_predictions = max(total_ml_predictions - updated_predictions, 0)
@@ -1134,11 +1135,11 @@ def _get_ml_stats(user_id):
 
     region_stats_map = {
         row[0]: {
-            'total': row[1] or 0,
-            'updated': row[2] or 0,
-            'special_hits': row[3] or 0,
-            'normal_hits': row[4] or 0,
-            'wrong_predictions': row[5] or 0,
+            'total': int_or_zero(row[1]),
+            'updated': int_or_zero(row[2]),
+            'special_hits': int_or_zero(row[3]),
+            'normal_hits': int_or_zero(row[4]),
+            'wrong_predictions': int_or_zero(row[5]),
         }
         for row in region_rows
     }
@@ -1274,11 +1275,11 @@ def _get_strategy_stats(user_id, strategy):
         PredictionRecord.strategy == strategy,
     ).one()
 
-    total_predictions = stats_row[0] or 0
-    updated_predictions = stats_row[1] or 0
-    special_hit_predictions = stats_row[2] or 0
-    normal_hit_predictions = stats_row[3] or 0
-    wrong_predictions = stats_row[4] or 0
+    total_predictions = int_or_zero(stats_row[0])
+    updated_predictions = int_or_zero(stats_row[1])
+    special_hit_predictions = int_or_zero(stats_row[2])
+    normal_hit_predictions = int_or_zero(stats_row[3])
+    wrong_predictions = int_or_zero(stats_row[4])
     pending_predictions = max(total_predictions - updated_predictions, 0)
 
     region_label_map = {'hk': '香港', 'macau': '澳门'}
@@ -1297,11 +1298,11 @@ def _get_strategy_stats(user_id, strategy):
 
     region_stats_map = {
         row[0]: {
-            'total': row[1] or 0,
-            'updated': row[2] or 0,
-            'special_hits': row[3] or 0,
-            'normal_hits': row[4] or 0,
-            'wrong_predictions': row[5] or 0,
+            'total': int_or_zero(row[1]),
+            'updated': int_or_zero(row[2]),
+            'special_hits': int_or_zero(row[3]),
+            'normal_hits': int_or_zero(row[4]),
+            'wrong_predictions': int_or_zero(row[5]),
         }
         for row in region_rows
     }
@@ -1586,11 +1587,11 @@ def predictions():
         db.func.sum(db.case((db.and_(PredictionRecord.is_result_updated == True, actual_special != None, special_number != actual_special, ~_secondary_hit_expr()), 1), else_=0))
     ).filter(PredictionRecord.user_id == session['user_id']).one()
 
-    total_predictions = stats_row[0] or 0
-    updated_predictions = stats_row[1] or 0
-    special_hit_predictions = stats_row[2] or 0
-    normal_hit_predictions = stats_row[3] or 0
-    wrong_predictions = stats_row[4] or 0
+    total_predictions = int_or_zero(stats_row[0])
+    updated_predictions = int_or_zero(stats_row[1])
+    special_hit_predictions = int_or_zero(stats_row[2])
+    normal_hit_predictions = int_or_zero(stats_row[3])
+    wrong_predictions = int_or_zero(stats_row[4])
 
     accurate_predictions = special_hit_predictions
     
@@ -1824,9 +1825,9 @@ def ml_records():
     ).subquery()
 
     records_per_page = 12
-    total_records = db.session.query(func.count()).select_from(
+    total_records = int_or_zero(db.session.query(func.count()).select_from(
         deduped_prediction_ids
-    ).scalar() or 0
+    ).scalar())
     total_pages = max(1, (total_records + records_per_page - 1) // records_per_page)
     current_page = min(max(page, 1), total_pages)
     start_index = (current_page - 1) * records_per_page
@@ -1901,11 +1902,11 @@ def ml_records():
         PredictionRecord.strategy == 'ml',
     ).one()
 
-    total_ml_predictions = stats_row[0] or 0
-    updated_predictions = stats_row[1] or 0
-    special_hit_predictions = stats_row[2] or 0
-    normal_hit_predictions = stats_row[3] or 0
-    wrong_predictions = stats_row[4] or 0
+    total_ml_predictions = int_or_zero(stats_row[0])
+    updated_predictions = int_or_zero(stats_row[1])
+    special_hit_predictions = int_or_zero(stats_row[2])
+    normal_hit_predictions = int_or_zero(stats_row[3])
+    wrong_predictions = int_or_zero(stats_row[4])
     pending_predictions = max(total_ml_predictions - updated_predictions, 0)
     special_hit_rate = (special_hit_predictions / updated_predictions * 100) if updated_predictions > 0 else 0
     normal_hit_rate = (normal_hit_predictions / updated_predictions * 100) if updated_predictions > 0 else 0
@@ -1926,10 +1927,10 @@ def ml_records():
     fast_region_ml_stats = []
     region_stats_map = {
         row[0]: {
-            'total': row[1] or 0,
-            'updated': row[2] or 0,
-            'special_hits': row[3] or 0,
-            'normal_hits': row[4] or 0,
+            'total': int_or_zero(row[1]),
+            'updated': int_or_zero(row[2]),
+            'special_hits': int_or_zero(row[3]),
+            'normal_hits': int_or_zero(row[4]),
         }
         for row in region_rows
     }
@@ -1963,10 +1964,10 @@ def ml_records():
             PredictionRecord.region == region_key,
         ).one()
 
-        region_total = region_row[0] or 0
-        region_updated = region_row[1] or 0
-        region_special_hits = region_row[2] or 0
-        region_normal_hits = region_row[3] or 0
+        region_total = int_or_zero(region_row[0])
+        region_updated = int_or_zero(region_row[1])
+        region_special_hits = int_or_zero(region_row[2])
+        region_normal_hits = int_or_zero(region_row[3])
         region_ml_stats.append({
             'region': region_key,
             'label': region_label,

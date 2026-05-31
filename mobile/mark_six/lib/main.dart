@@ -88,6 +88,39 @@ class _MarkSixAppState extends State<MarkSixApp> {
 class AppState extends ChangeNotifier {
   UserProfile? user;
   bool initialized = false;
+  String _selectedRegion = 'hk';
+
+  String get selectedRegion => _selectedRegion;
+
+  String _selectedRegionKey(UserProfile? current) {
+    if (current == null) return 'selected_region_guest';
+    return 'selected_region_user_${current.id}';
+  }
+
+  bool _isValidRegion(String region) {
+    return region == 'hk' || region == 'macau';
+  }
+
+  String _normalizeRegion(String region) {
+    return _isValidRegion(region) ? region : 'hk';
+  }
+
+  Future<void> _loadSelectedRegion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_selectedRegionKey(user));
+    _selectedRegion = _normalizeRegion(stored ?? 'hk');
+  }
+
+  Future<void> setSelectedRegion(String region) async {
+    final next = _normalizeRegion(region);
+    if (_selectedRegion == next) {
+      return;
+    }
+    _selectedRegion = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedRegionKey(user), next);
+    notifyListeners();
+  }
 
   bool get activationValid {
     final current = user;
@@ -101,6 +134,7 @@ class AppState extends ChangeNotifier {
   Future<void> init() async {
     await ApiClient.instance.init();
     await loadMe();
+    await _loadSelectedRegion();
     initialized = true;
     notifyListeners();
   }
@@ -126,6 +160,7 @@ class AppState extends ChangeNotifier {
       );
       if (res['success'] == true) {
         user = UserProfile.fromJson(res['user'] as Map<String, dynamic>);
+        await _loadSelectedRegion();
         notifyListeners();
         return null;
       }
@@ -723,8 +758,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      const RecordsScreen(),
-      const ZodiacNumbersScreen(),
+      RecordsScreen(appState: widget.appState),
+      ZodiacNumbersScreen(appState: widget.appState),
       ManualPickScreen(appState: widget.appState),
       PredictScreen(appState: widget.appState),
       ProfileScreen(appState: widget.appState),
@@ -766,7 +801,9 @@ String ballColorName(String number) {
 }
 
 class ZodiacNumbersScreen extends StatefulWidget {
-  const ZodiacNumbersScreen({super.key});
+  const ZodiacNumbersScreen({super.key, required this.appState});
+
+  final AppState appState;
 
   @override
   State<ZodiacNumbersScreen> createState() => _ZodiacNumbersScreenState();
@@ -792,7 +829,7 @@ class _ZodiacNumbersScreenState extends State<ZodiacNumbersScreen> {
     try {
       final res = await ApiClient.instance.getZodiacs(
         numbers: numbers,
-        region: 'hk',
+        region: widget.appState.selectedRegion,
         year: DateTime.now().year.toString(),
       );
       final normal =
@@ -832,7 +869,25 @@ class _ZodiacNumbersScreenState extends State<ZodiacNumbersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  appBar: AppBar(title: const Text('生肖号码表')),
+      appBar: AppBar(
+        title: const Text('生肖号码表'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'hk', label: Text('香港')),
+                ButtonSegment(value: 'macau', label: Text('澳门')),
+              ],
+              selected: {widget.appState.selectedRegion},
+              onSelectionChanged: (value) async {
+                await widget.appState.setSelectedRegion(value.first);
+                await _fetch();
+              },
+            ),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _fetch,
         child: _loading
@@ -985,7 +1040,6 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
       TextEditingController(text: '2');
   final Map<int, TextEditingController> _numberStakeControllers = {};
 
-  String _region = 'hk';
   DrawRecord? _latestDraw;
   String _nextPeriod = '';
   bool _loading = false;
@@ -1000,6 +1054,7 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
   bool _showAllManualBetPeriods = false;
 
   bool get _activationValid => widget.appState.activationValid;
+  String get _region => widget.appState.selectedRegion;
 
   String _oddsPrefKey(String name) {
     final user = widget.appState.user;
@@ -1656,7 +1711,7 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
 
   String _computeNextPeriod(String latestId) {
     final year = DateTime.now().year;
-    if (latestId.contains('/')) {
+    if (_region == 'hk' && latestId.contains('/')) {
       final parts = latestId.split('/');
       if (parts.length == 2) {
         final yearPart = parts[0];
@@ -1686,7 +1741,11 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
       final num = int.tryParse(latestId) ?? 0;
       return (num + 1).toString();
     }
-    return '$year/001';
+    if (_region == 'hk') {
+      return '${DateTime.now().year}001';
+    }
+    final shortYear = (year % 100).toString().padLeft(2, '0');
+    return '$shortYear/001';
   }
 
   Future<String> _resolveSpecialZodiac(DrawRecord draw) async {
@@ -2150,9 +2209,10 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
                           ButtonSegment(value: 'macau', label: Text('澳门')),
                         ],
                         selected: {_region},
-                        onSelectionChanged: (value) {
+                        onSelectionChanged: (value) async {
+                          await widget.appState.setSelectedRegion(value.first);
+                          if (!mounted) return;
                           setState(() {
-                            _region = value.first;
                             _latestDraw = null;
                             _nextPeriod = '';
                             _periodController.clear();
@@ -2743,7 +2803,9 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
 }
 
 class RecordsScreen extends StatefulWidget {
-  const RecordsScreen({super.key});
+  const RecordsScreen({super.key, required this.appState});
+
+  final AppState appState;
 
   @override
   State<RecordsScreen> createState() => _RecordsScreenState();
@@ -2752,7 +2814,6 @@ class RecordsScreen extends StatefulWidget {
 class _RecordsScreenState extends State<RecordsScreen> {
   List<DrawRecord> _records = [];
   List<DrawRecord> _allRecords = [];
-  String _region = 'hk';
   bool _loading = false;
   bool _nextDrawLoading = false;
   String? _nextDrawTime;
@@ -2761,6 +2822,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
   final TextEditingController _periodController = TextEditingController();
   final TextEditingController _specialNumberController = TextEditingController();
   final TextEditingController _specialZodiacController = TextEditingController();
+
+  String get _region => widget.appState.selectedRegion;
 
   @override
   void initState() {
@@ -2818,7 +2881,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
     });
 
     try {
-      final data = await ApiClient.instance.nextDrawTime(region: 'hk');
+      final data = await ApiClient.instance.nextDrawTime(region: _region);
       final raw = data['next_time']?.toString().trim();
       final normalized = _normalizeDateTimeString(raw);
       if (!mounted) return;
@@ -3145,8 +3208,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
                     ButtonSegment(value: 'macau', label: Text('澳门')),
                   ],
                   selected: {_region},
-                  onSelectionChanged: (value) {
-                    setState(() => _region = value.first);
+                  onSelectionChanged: (value) async {
+                    await widget.appState.setSelectedRegion(value.first);
                     _fetch();
                     _fetchNextDrawTime();
                   },
@@ -3441,7 +3504,6 @@ class PredictScreen extends StatefulWidget {
 }
 
 class _PredictScreenState extends State<PredictScreen> {
-  String _region = 'hk';
   String _strategy = 'ml';
   bool _loading = false;
   String _aiText = '';
@@ -3458,6 +3520,7 @@ class _PredictScreenState extends State<PredictScreen> {
 
   bool get _showNormalNumbers =>
       widget.appState.user?.showNormalNumbers ?? false;
+  String get _region => widget.appState.selectedRegion;
 
   final Map<String, String> _strategyLabels = const {
     'ml': '机器学习',
@@ -5033,9 +5096,10 @@ class _PredictScreenState extends State<PredictScreen> {
                               ButtonSegment(value: 'macau', label: Text('澳门')),
                             ],
                             selected: {_region},
-                            onSelectionChanged: (value) {
+                            onSelectionChanged: (value) async {
+                              await widget.appState.setSelectedRegion(value.first);
+                              if (!mounted) return;
                               setState(() {
-                                _region = value.first;
                                 _resetPrediction();
                               });
                               _loadPredictionRecords();
@@ -5611,7 +5675,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class UpdateService {
-  static const String _owner = 'e5sub';
+  static const String _owner = '0bito798';
   static const String _repo = 'mark-six';
   static const String _apkName = 'app-release.apk';
   static const String _proxy = 'https://gh-proxy.com/';

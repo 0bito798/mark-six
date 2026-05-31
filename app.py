@@ -15,13 +15,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from collections import Counter
 import re
-from urllib.parse import quote_plus
 from datetime import datetime, timedelta
 import time
 from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.engine import make_url
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
+from railway_db import MYSQL_CHARSET, build_database_uri
 
 # 导入用户系统模块
 from models import db, User, PredictionRecord, SystemConfig, InviteCode, LotteryDraw, ManualBetRecord, BacktestRun
@@ -454,25 +454,11 @@ def _startup_schema_lock(timeout_seconds=120):
             except OSError:
                 pass
 
-MYSQL_CHARSET = "utf8mb4"
-MYSQL_COLLATION = os.environ.get("MYSQL_COLLATION", "utf8mb4_unicode_ci")
+MYSQL_COLLATION = os.environ.get("MYSQL_COLLATION", "utf8mb4_unicode_ci").strip() or "utf8mb4_unicode_ci"
 
 
 def _build_database_uri(db_path):
-    db_url = os.environ.get("DATABASE_URL")
-    if db_url:
-        return db_url
-
-    db_type = os.environ.get("DB_TYPE", "sqlite").lower()
-    if db_type in ("mysql", "mariadb"):
-        host = os.environ.get("DB_HOST", "localhost")
-        port = os.environ.get("DB_PORT", "3306")
-        name = os.environ.get("DB_NAME", "mark_six")
-        user = quote_plus(os.environ.get("DB_USER", "root"))
-        password = quote_plus(os.environ.get("DB_PASSWORD", ""))
-        return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset={MYSQL_CHARSET}"
-
-    return f"sqlite:///{db_path}"
+    return build_database_uri(db_path)
 
 
 def _build_engine_options(database_uri):
@@ -11901,14 +11887,7 @@ def check_user_activation():
 # 创建数据库表和初始管理员账号
 def init_database():
     with app.app_context():
-        db.create_all()
-        
-        # 自动检查并更新数据库结构（邀请系统）
-        from auto_update_db import check_and_update_database
-        try:
-            check_and_update_database()
-        except Exception as e:
-            print(f"自动更新数据库结构时出错: {e}")
+        ensure_runtime_database_schema()
         
         admin = User.query.filter_by(is_admin=True).first()
         

@@ -12,10 +12,9 @@ from datetime import datetime
 import hashlib
 import uuid
 
-DB_TYPE = os.environ.get("DB_TYPE", "sqlite").lower()
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+from railway_db import is_mysql_configured
 
-if DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql"):
+if is_mysql_configured():
     print("MySQL configured, skipping sqlite database creation.")
     sys.exit(0)
 
