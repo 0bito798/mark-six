@@ -14,6 +14,24 @@ import 'api_client.dart';
 import 'config.dart';
 import 'models.dart';
 
+const String _preferredRegionPrefsKey = 'preferred_region';
+const Set<String> _supportedRegions = {'hk', 'macau'};
+
+String _normalizeRegion(String? value) {
+  final region = (value ?? '').trim().toLowerCase();
+  return _supportedRegions.contains(region) ? region : 'hk';
+}
+
+Future<String> loadPreferredRegion() async {
+  final prefs = await SharedPreferences.getInstance();
+  return _normalizeRegion(prefs.getString(_preferredRegionPrefsKey));
+}
+
+Future<void> savePreferredRegion(String region) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(_preferredRegionPrefsKey, _normalizeRegion(region));
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MarkSixApp());
@@ -1995,9 +2013,8 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLatestDraw();
-    _loadManualBets();
     _loadOddsPrefs();
+    _restoreRegionAndLoad();
   }
 
   @override
@@ -2077,6 +2094,14 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
         setState(() => _loadingBets = false);
       }
     }
+  }
+
+  Future<void> _restoreRegionAndLoad() async {
+    final region = await loadPreferredRegion();
+    if (!mounted) return;
+    setState(() => _region = region);
+    _loadLatestDraw();
+    _loadManualBets();
   }
 
   void _showMessage(String message) {
@@ -2546,6 +2571,7 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
         borderRadius: BorderRadius.circular(14),
         onTap: () {
           if (_region == value) return;
+          unawaited(savePreferredRegion(value));
           setState(() {
             _region = value;
             _latestDraw = null;
@@ -3279,13 +3305,20 @@ class _RecordsScreenState extends State<RecordsScreen> {
   void initState() {
     super.initState();
     _yearController.text = DateTime.now().year.toString();
-    _fetch();
-    _fetchNextDrawTime();
+    _restoreRegionAndLoad();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
         setState(() {});
       }
     });
+  }
+
+  Future<void> _restoreRegionAndLoad() async {
+    final region = await loadPreferredRegion();
+    if (!mounted) return;
+    setState(() => _region = region);
+    _fetch();
+    _fetchNextDrawTime();
   }
 
   @override
@@ -3507,6 +3540,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
         borderRadius: BorderRadius.circular(14),
         onTap: () {
           if (_region == value) return;
+          unawaited(savePreferredRegion(value));
           setState(() => _region = value);
           _fetch(showLoading: false);
           _fetchNextDrawTime();
@@ -4222,7 +4256,7 @@ class _PredictScreenState extends State<PredictScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPredictionRecords();
+    _restoreRegionAndLoad();
   }
 
   @override
@@ -4236,6 +4270,13 @@ class _PredictScreenState extends State<PredictScreen> {
     _aiText = '';
     _normalZodiacs = [];
     _specialZodiac = '';
+  }
+
+  Future<void> _restoreRegionAndLoad() async {
+    final region = await loadPreferredRegion();
+    if (!mounted) return;
+    setState(() => _region = region);
+    _loadPredictionRecords();
   }
 
   void _upsertPredictionRecordFromResult({
@@ -5939,8 +5980,10 @@ class _PredictScreenState extends State<PredictScreen> {
                             ],
                             selected: {_region},
                             onSelectionChanged: (value) {
+                              final region = value.first;
+                              unawaited(savePreferredRegion(region));
                               setState(() {
-                                _region = value.first;
+                                _region = region;
                                 _resetPrediction();
                               });
                               _loadPredictionRecords();
@@ -6625,10 +6668,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class UpdateService {
-  static const String _owner = 'e5sub';
+  static const String _owner = '0bito798';
   static const String _repo = 'mark-six';
   static const String _apkName = 'app-release.apk';
-  static const String _proxy = 'https://gh-proxy.com/';
 
   static Future<void> checkForUpdate(
     BuildContext context, {
@@ -6693,8 +6735,7 @@ class UpdateService {
   }
 
   static Future<_ReleaseInfo?> _fetchLatestRelease() async {
-    final url =
-        '${_proxy}https://api.github.com/repos/$_owner/$_repo/releases/latest';
+    final url = 'https://api.github.com/repos/$_owner/$_repo/releases/latest';
     final response = await Dio().get(url);
     if (response.statusCode != 200 || response.data is! Map) {
       return null;

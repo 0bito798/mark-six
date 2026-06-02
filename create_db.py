@@ -22,7 +22,30 @@ if hasattr(sys.stderr, "reconfigure"):
 DB_TYPE = os.environ.get("DB_TYPE", "sqlite").lower()
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-if DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql"):
+
+def _env_value(*names, default=""):
+    for name in names:
+        value = os.environ.get(name)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return default
+
+
+def _using_mysql():
+    db_type = _env_value("DB_TYPE", default=DB_TYPE).lower()
+    if db_type in ("mysql", "mariadb"):
+        return True
+    for name in ("DATABASE_URL", "MYSQL_URL"):
+        raw_uri = _env_value(name)
+        if raw_uri.lower().startswith(("mysql://", "mysql+", "mariadb://", "mariadb+")):
+            return True
+    return bool(_env_value("MYSQLHOST"))
+
+
+if _using_mysql():
     print("检测到 MySQL/MariaDB 配置，执行数据库结构更新。")
     try:
         import auto_update_db
@@ -37,7 +60,7 @@ if DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql"):
         print(f"MySQL/MariaDB 数据库结构更新失败: {e}")
         sys.exit(1)
 
-if False and (DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql")):
+if False and _using_mysql():
     print("⚠ 检测到 MySQL/MariaDB 配置，跳过 SQLite 数据库创建。")
     sys.exit(0)
 

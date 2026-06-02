@@ -52,6 +52,28 @@ _MOBILE_CSRF_EXEMPT_ENDPOINTS = {
 }
 
 
+def int_or_zero(value):
+    if value is None:
+        return 0
+    try:
+        if isinstance(value, str) and not value.strip():
+            return 0
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def float_or_zero(value):
+    if value is None:
+        return 0.0
+    try:
+        if isinstance(value, str) and not value.strip():
+            return 0.0
+        return float(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+
+
 def _safe_json_loads(value):
     if not value:
         return {}
@@ -1478,14 +1500,16 @@ def api_manual_bets_list():
                 "selected_zodiacs": record.selected_zodiacs or "",
                 "selected_colors": record.selected_colors or "",
                 "selected_parity": record.selected_parity or "",
-                "odds_number": record.odds_number,
-                "odds_zodiac": record.odds_zodiac,
-                "odds_color": record.odds_color,
-                "odds_parity": record.odds_parity,
-                "stake_special": record.stake_special,
-                "stake_common": record.stake_common,
-                "total_stake": record.total_stake,
-                "total_profit": record.total_profit,
+                "odds_number": float_or_zero(record.odds_number),
+                "odds_zodiac": float_or_zero(record.odds_zodiac),
+                "odds_color": float_or_zero(record.odds_color),
+                "odds_parity": float_or_zero(record.odds_parity),
+                "stake_special": float_or_zero(record.stake_special),
+                "stake_common": float_or_zero(record.stake_common),
+                "total_stake": float_or_zero(record.total_stake),
+                "total_profit": None
+                if record.total_profit is None
+                else float_or_zero(record.total_profit),
                 "special_number": record.special_number,
                 "special_zodiac": record.special_zodiac,
                 "special_color": record.special_color,
@@ -1516,17 +1540,17 @@ def api_manual_bets_summary():
         query = query.filter_by(region=region)
 
     settled_query = query.filter(ManualBetRecord.total_profit.isnot(None))
-    pending_count = query.filter(ManualBetRecord.total_profit.is_(None)).count()
-    settled_count = settled_query.count()
+    pending_count = int_or_zero(query.filter(ManualBetRecord.total_profit.is_(None)).count())
+    settled_count = int_or_zero(settled_query.count())
     totals = settled_query.with_entities(
         func.coalesce(func.sum(ManualBetRecord.total_stake), 0),
         func.coalesce(func.sum(ManualBetRecord.total_profit), 0),
     ).first()
-    total_stake = float(totals[0] or 0)
-    total_profit = float(totals[1] or 0)
-    win_count = settled_query.filter(ManualBetRecord.total_profit > 0).count()
-    lose_count = settled_query.filter(ManualBetRecord.total_profit < 0).count()
-    draw_count = settled_query.filter(ManualBetRecord.total_profit == 0).count()
+    total_stake = float_or_zero(totals[0] if totals else None)
+    total_profit = float_or_zero(totals[1] if totals else None)
+    win_count = int_or_zero(settled_query.filter(ManualBetRecord.total_profit > 0).count())
+    lose_count = int_or_zero(settled_query.filter(ManualBetRecord.total_profit < 0).count())
+    draw_count = int_or_zero(settled_query.filter(ManualBetRecord.total_profit == 0).count())
 
     return jsonify(
         {

@@ -12,18 +12,19 @@ echo "数据目录内容:"
 ls -la /app/data
 
 DB_TYPE_LOWER=$(echo "${DB_TYPE:-}" | tr '[:upper:]' '[:lower:]')
-if [ "$DB_TYPE_LOWER" = "mysql" ] || [ "$DB_TYPE_LOWER" = "mariadb" ] || echo "${DATABASE_URL:-}" | grep -qi "^mysql"; then
+if [ "$DB_TYPE_LOWER" = "mysql" ] \
+    || [ "$DB_TYPE_LOWER" = "mariadb" ] \
+    || echo "${DATABASE_URL:-}" | grep -qiE "^(mysql|mariadb)(\\+|://)" \
+    || echo "${MYSQL_URL:-}" | grep -qiE "^(mysql|mariadb)(\\+|://)" \
+    || [ -n "$(printf '%s' "${MYSQLHOST:-}" | tr -d '[:space:]')" ]; then
     echo "MySQL configured, skipping sqlite initialization."
-    echo "Starting service..."
-    exec "$@"
-fi
-
-# 检查数据库文件是否存在
-if [ ! -f /app/data/lottery_system.db ]; then
+else
+    # 检查数据库文件是否存在
+    if [ ! -f /app/data/lottery_system.db ]; then
     echo "数据库文件不存在，正在初始化数据库..."
     # 使用create_db.py脚本创建数据库
     python create_db.py
-    
+
     # 再次检查数据库文件是否创建成功
     if [ -f /app/data/lottery_system.db ]; then
         echo "数据库文件创建成功: $(ls -la /app/data/lottery_system.db)"
@@ -32,11 +33,15 @@ if [ ! -f /app/data/lottery_system.db ]; then
     else
         echo "警告: 数据库文件创建失败!"
     fi
-else
+    else
     echo "数据库文件已存在: $(ls -la /app/data/lottery_system.db)"
     # 确保现有数据库文件权限正确
     chmod 666 /app/data/lottery_system.db
+    fi
 fi
+
+echo "正在检查并同步数据库结构..."
+python3 -c "from app import init_database; init_database()"
 
 echo "正在启动 Gunicorn 服务器..."
 exec "$@"

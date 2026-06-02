@@ -21,21 +21,68 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 MYSQL_CHARSET = "utf8mb4"
 
+
+def _env_value(*names, default=""):
+    for name in names:
+        value = os.environ.get(name)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return default
+
+
+def _normalize_mysql_database_uri(database_uri):
+    raw_uri = str(database_uri or "").strip()
+    if not raw_uri:
+        return raw_uri
+
+    try:
+        url = make_url(raw_uri)
+        backend = (url.get_backend_name() or "").lower()
+        if backend == "mysql":
+            url = url.set(drivername="mysql+pymysql")
+        elif backend == "mariadb":
+            url = url.set(drivername="mariadb+pymysql")
+
+        if backend in ("mysql", "mariadb"):
+            query = dict(url.query or {})
+            if "charset" not in query:
+                query["charset"] = MYSQL_CHARSET
+                url = url.set(query=query)
+            return url.render_as_string(hide_password=False)
+    except Exception:
+        lowered = raw_uri.lower()
+        if lowered.startswith("mysql://"):
+            return f"mysql+pymysql://{raw_uri.split('://', 1)[1]}"
+        if lowered.startswith("mariadb://"):
+            return f"mariadb+pymysql://{raw_uri.split('://', 1)[1]}"
+
+    return raw_uri
+
+
 def _using_mysql():
-    if DB_TYPE in ("mysql", "mariadb"):
+    db_type = _env_value("DB_TYPE", default=DB_TYPE).lower()
+    if db_type in ("mysql", "mariadb"):
         return True
-    return DATABASE_URL.lower().startswith("mysql")
+    for name in ("DATABASE_URL", "MYSQL_URL"):
+        raw_uri = _env_value(name)
+        if raw_uri.lower().startswith(("mysql://", "mysql+", "mariadb://", "mariadb+")):
+            return True
+    return bool(_env_value("MYSQLHOST"))
 
 
 def _build_mysql_database_uri():
-    if DATABASE_URL:
-        return DATABASE_URL
+    database_url = _env_value("DATABASE_URL") or _env_value("MYSQL_URL")
+    if database_url:
+        return _normalize_mysql_database_uri(database_url)
 
-    host = os.environ.get("DB_HOST", "localhost")
-    port = os.environ.get("DB_PORT", "3306")
-    name = os.environ.get("DB_NAME", "mark_six")
-    user = quote_plus(os.environ.get("DB_USER", "root"))
-    password = quote_plus(os.environ.get("DB_PASSWORD", ""))
+    host = _env_value("DB_HOST") or _env_value("MYSQLHOST") or "localhost"
+    port = _env_value("DB_PORT") or _env_value("MYSQLPORT") or "3306"
+    name = _env_value("DB_NAME") or _env_value("MYSQLDATABASE") or "mark_six"
+    user = quote_plus(_env_value("DB_USER") or _env_value("MYSQLUSER") or "root")
+    password = quote_plus(_env_value("DB_PASSWORD") or _env_value("MYSQLPASSWORD"))
     return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset={MYSQL_CHARSET}"
 
 

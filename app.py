@@ -868,18 +868,70 @@ MYSQL_CHARSET = "utf8mb4"
 MYSQL_COLLATION = os.environ.get("MYSQL_COLLATION", "utf8mb4_unicode_ci")
 
 
-def _build_database_uri(db_path):
-    db_url = os.environ.get("DATABASE_URL")
-    if db_url:
-        return db_url
+def _env_value(*names, default=""):
+    for name in names:
+        value = os.environ.get(name)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return default
 
-    db_type = os.environ.get("DB_TYPE", "sqlite").lower()
+
+def _normalize_mysql_database_uri(database_uri):
+    raw_uri = str(database_uri or "").strip()
+    if not raw_uri:
+        return raw_uri
+
+    try:
+        url = make_url(raw_uri)
+        backend = (url.get_backend_name() or "").lower()
+        if backend == "mysql":
+            url = url.set(drivername="mysql+pymysql")
+        elif backend == "mariadb":
+            url = url.set(drivername="mariadb+pymysql")
+
+        if backend in ("mysql", "mariadb"):
+            query = dict(url.query or {})
+            if "charset" not in query:
+                query["charset"] = MYSQL_CHARSET
+                url = url.set(query=query)
+            return url.render_as_string(hide_password=False)
+    except Exception:
+        lowered = raw_uri.lower()
+        if lowered.startswith("mysql://"):
+            return f"mysql+pymysql://{raw_uri.split('://', 1)[1]}"
+        if lowered.startswith("mariadb://"):
+            return f"mariadb+pymysql://{raw_uri.split('://', 1)[1]}"
+
+    return raw_uri
+
+
+def _has_mysql_configuration():
+    db_type = _env_value("DB_TYPE", default="sqlite").lower()
     if db_type in ("mysql", "mariadb"):
-        host = os.environ.get("DB_HOST", "localhost")
-        port = os.environ.get("DB_PORT", "3306")
-        name = os.environ.get("DB_NAME", "mark_six")
-        user = quote_plus(os.environ.get("DB_USER", "root"))
-        password = quote_plus(os.environ.get("DB_PASSWORD", ""))
+        return True
+
+    for name in ("DATABASE_URL", "MYSQL_URL"):
+        raw_uri = _env_value(name)
+        if raw_uri.lower().startswith(("mysql://", "mysql+", "mariadb://", "mariadb+")):
+            return True
+
+    return bool(_env_value("MYSQLHOST"))
+
+
+def _build_database_uri(db_path):
+    db_url = _env_value("DATABASE_URL") or _env_value("MYSQL_URL")
+    if db_url:
+        return _normalize_mysql_database_uri(db_url)
+
+    if _has_mysql_configuration():
+        host = _env_value("DB_HOST") or _env_value("MYSQLHOST") or "localhost"
+        port = _env_value("DB_PORT") or _env_value("MYSQLPORT") or "3306"
+        name = _env_value("DB_NAME") or _env_value("MYSQLDATABASE") or "mark_six"
+        user = quote_plus(_env_value("DB_USER") or _env_value("MYSQLUSER") or "root")
+        password = quote_plus(_env_value("DB_PASSWORD") or _env_value("MYSQLPASSWORD"))
         return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset={MYSQL_CHARSET}"
 
     return f"sqlite:///{db_path}"
@@ -13302,6 +13354,11 @@ def check_user_activation():
 def init_database():
     with app.app_context():
         db.create_all()
+
+        try:
+            _sync_runtime_database_schema()
+        except Exception as e:
+            print(f"同步运行时数据库结构时出错: {e}")
         
         # 自动检查并更新数据库结构（邀请系统）
         from auto_update_db import check_and_update_database
