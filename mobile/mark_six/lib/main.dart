@@ -6753,8 +6753,7 @@ class UpdateService {
     }
     if (asset == null) return null;
     final rawUrl = asset['browser_download_url']?.toString();
-    final downloadUrl =
-        rawUrl == null || rawUrl.isEmpty ? null : '$_proxy$rawUrl';
+    final downloadUrl = rawUrl == null || rawUrl.isEmpty ? null : rawUrl;
     if (downloadUrl == null || downloadUrl.isEmpty) return null;
     return _ReleaseInfo(version: version, downloadUrl: downloadUrl);
   }
