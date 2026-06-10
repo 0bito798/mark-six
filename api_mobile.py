@@ -31,6 +31,7 @@ from auth import (
     send_reset_email,
     send_activation_request_notification,
 )
+from numeric_utils import float_or_zero
 
 
 mobile_api_bp = Blueprint("mobile_api", __name__, url_prefix="/api/mobile")
@@ -1522,8 +1523,8 @@ def api_manual_bets_summary():
         func.coalesce(func.sum(ManualBetRecord.total_stake), 0),
         func.coalesce(func.sum(ManualBetRecord.total_profit), 0),
     ).first()
-    total_stake = float(totals[0] or 0)
-    total_profit = float(totals[1] or 0)
+    total_stake = float_or_zero(totals[0])
+    total_profit = float_or_zero(totals[1])
     win_count = settled_query.filter(ManualBetRecord.total_profit > 0).count()
     lose_count = settled_query.filter(ManualBetRecord.total_profit < 0).count()
     draw_count = settled_query.filter(ManualBetRecord.total_profit == 0).count()

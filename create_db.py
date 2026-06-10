@@ -12,6 +12,8 @@ import os
 import sqlite3
 import sys
 
+from railway_db import is_mysql_configured
+
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -19,10 +21,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
-DB_TYPE = os.environ.get("DB_TYPE", "sqlite").lower()
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-
-if DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql"):
+if is_mysql_configured():
     print("检测到 MySQL/MariaDB 配置，执行数据库结构更新。")
     try:
         import auto_update_db
@@ -37,7 +36,7 @@ if DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql"):
         print(f"MySQL/MariaDB 数据库结构更新失败: {e}")
         sys.exit(1)
 
-if False and (DB_TYPE in ("mysql", "mariadb") or DATABASE_URL.lower().startswith("mysql")):
+if False and is_mysql_configured():
     print("⚠ 检测到 MySQL/MariaDB 配置，跳过 SQLite 数据库创建。")
     sys.exit(0)
 

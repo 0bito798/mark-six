@@ -14,7 +14,7 @@ import hmac
 from contextlib import contextmanager
 from collections import Counter
 import re
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import urlparse
 from datetime import datetime, timedelta
 import time
 from markupsafe import escape
@@ -23,6 +23,7 @@ from sqlalchemy.engine import make_url
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
 from werkzeug.middleware.proxy_fix import ProxyFix
+from railway_db import build_database_uri
 
 # 导入用户系统模块
 from models import db, User, PredictionRecord, SystemConfig, InviteCode, LotteryDraw, ManualBetRecord, BacktestRun
@@ -870,20 +871,7 @@ MYSQL_COLLATION = os.environ.get("MYSQL_COLLATION", "utf8mb4_unicode_ci")
 
 
 def _build_database_uri(db_path):
-    db_url = os.environ.get("DATABASE_URL")
-    if db_url:
-        return db_url
-
-    db_type = os.environ.get("DB_TYPE", "sqlite").lower()
-    if db_type in ("mysql", "mariadb"):
-        host = os.environ.get("DB_HOST", "localhost")
-        port = os.environ.get("DB_PORT", "3306")
-        name = os.environ.get("DB_NAME", "mark_six")
-        user = quote_plus(os.environ.get("DB_USER", "root"))
-        password = quote_plus(os.environ.get("DB_PASSWORD", ""))
-        return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset={MYSQL_CHARSET}"
-
-    return f"sqlite:///{db_path}"
+    return build_database_uri(db_path, mysql_charset=MYSQL_CHARSET)
 
 
 def _build_engine_options(database_uri):
@@ -13920,6 +13908,11 @@ def check_user_activation():
 def init_database():
     with app.app_context():
         db.create_all()
+
+        try:
+            _sync_runtime_database_schema()
+        except Exception as e:
+            print(f"同步运行时数据库结构时出错: {e}")
         
         # 自动检查并更新数据库结构（邀请系统）
         from auto_update_db import check_and_update_database
