@@ -15,26 +15,6 @@
         }
         .flash-messages { list-style: none; padding: 0; margin: 0; }
         .flash-messages .alert { margin-top: 1rem; }
-        .site-footer {
-            padding: 1.25rem 0 2rem;
-            text-align: center;
-            color: #cbd5e1;
-            font-size: 0.9rem;
-            line-height: 1.7;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        .site-footer a {
-            color: #93c5fd;
-            text-decoration: none;
-            font-weight: 700;
-        }
-        .site-footer a:hover {
-            text-decoration: underline;
-        }
         .site-logo-nav {
             width: 38px;
             height: 38px;
@@ -120,12 +100,6 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
-    <footer class="site-footer">
-        <span>GitHub：</span>
-        <a href="https://github.com/e5sub/mark-six" target="_blank" rel="noopener noreferrer">e5sub/mark-six</a>
-        <span>本项目源码仅限非商业用途使用。</span>
-        <a href="https://github.com/e5sub/mark-six/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">许可协议</a>
-    </footer>
     {% endblock %}
     
     <script src="https://fastly.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

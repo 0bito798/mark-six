@@ -22,6 +22,7 @@ import io
 import threading
 from collections import OrderedDict
 from sqlalchemy import func, case, or_
+from numeric_utils import float_or_zero, int_or_zero
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -1743,13 +1744,13 @@ def bets():
             user_map = {user.id: user.username for user in users}
 
         summary = {
-            'total': stats[0] or 0,
-            'total_stake': stats[1] or 0,
-            'total_profit': stats[2] or 0,
-            'win_count': stats[3] or 0,
-            'lose_count': stats[4] or 0,
-            'draw_count': stats[5] or 0,
-            'pending_count': stats[6] or 0
+            'total': int_or_zero(stats[0]),
+            'total_stake': float_or_zero(stats[1]),
+            'total_profit': float_or_zero(stats[2]),
+            'win_count': int_or_zero(stats[3]),
+            'lose_count': int_or_zero(stats[4]),
+            'draw_count': int_or_zero(stats[5]),
+            'pending_count': int_or_zero(stats[6])
         }
 
         return render_template(

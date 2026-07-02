@@ -14,20 +14,31 @@ import 'api_client.dart';
 import 'config.dart';
 import 'models.dart';
 
-const String _lastRegionPrefKey = 'last_selected_region';
+const String _preferredRegionPrefsKey = 'preferred_region';
+const String _legacyLastRegionPrefKey = 'last_selected_region';
 
 String _normalizeRegion(String? value) {
-  return value == 'hk' ? 'hk' : 'macau';
+  if (value == 'macau') return 'macau';
+  return 'hk';
 }
 
-Future<String> _loadLastRegion() async {
+Future<String> loadPreferredRegion() async {
   final prefs = await SharedPreferences.getInstance();
-  return _normalizeRegion(prefs.getString(_lastRegionPrefKey));
+  final preferred = prefs.getString(_preferredRegionPrefsKey);
+  if (preferred != null) {
+    return _normalizeRegion(preferred);
+  }
+  final legacy = prefs.getString(_legacyLastRegionPrefKey);
+  final region = _normalizeRegion(legacy);
+  if (legacy != null) {
+    await prefs.setString(_preferredRegionPrefsKey, region);
+  }
+  return region;
 }
 
-Future<void> _saveLastRegion(String value) async {
+Future<void> savePreferredRegion(String value) async {
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(_lastRegionPrefKey, _normalizeRegion(value));
+  await prefs.setString(_preferredRegionPrefsKey, _normalizeRegion(value));
 }
 
 void main() {
@@ -1436,7 +1447,7 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
       TextEditingController(text: '2');
   final Map<int, TextEditingController> _numberStakeControllers = {};
 
-  String _region = 'macau';
+  String _region = 'hk';
   DrawRecord? _latestDraw;
   String _nextPeriod = '';
   bool _loading = false;
@@ -2016,7 +2027,7 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
   }
 
   Future<void> _restoreRegionAndLoad() async {
-    final savedRegion = await _loadLastRegion();
+    final savedRegion = await loadPreferredRegion();
     if (!mounted) return;
     setState(() => _region = savedRegion);
     _loadLatestDraw();
@@ -2574,7 +2585,7 @@ class _ManualPickScreenState extends State<ManualPickScreen> {
         borderRadius: BorderRadius.circular(14),
         onTap: () async {
           if (_region == value) return;
-          await _saveLastRegion(value);
+          await savePreferredRegion(value);
           if (!mounted) return;
           setState(() {
             _region = value;
@@ -3337,7 +3348,7 @@ class RecordsScreen extends StatefulWidget {
 class _RecordsScreenState extends State<RecordsScreen> {
   List<DrawRecord> _records = [];
   List<DrawRecord> _allRecords = [];
-  String _region = 'macau';
+  String _region = 'hk';
   bool _loading = false;
   bool _updatingDraws = false;
   bool _nextDrawLoading = false;
@@ -3366,7 +3377,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Future<void> _restoreRegionAndLoad() async {
-    final savedRegion = await _loadLastRegion();
+    final savedRegion = await loadPreferredRegion();
     if (!mounted) return;
     setState(() => _region = savedRegion);
     _fetch();
@@ -3623,7 +3634,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
         borderRadius: BorderRadius.circular(14),
         onTap: () async {
           if (_region == value) return;
-          await _saveLastRegion(value);
+          await savePreferredRegion(value);
           if (!mounted) return;
           setState(() => _region = value);
           _fetch(showLoading: false);
@@ -4183,7 +4194,7 @@ class PredictScreen extends StatefulWidget {
 }
 
 class _PredictScreenState extends State<PredictScreen> {
-  String _region = 'macau';
+  String _region = 'hk';
   String _strategy = 'ml';
   bool _loading = false;
   String _aiText = '';
@@ -4350,7 +4361,7 @@ class _PredictScreenState extends State<PredictScreen> {
         borderRadius: BorderRadius.circular(14),
         onTap: () async {
           if (_region == value) return;
-          await _saveLastRegion(value);
+          await savePreferredRegion(value);
           if (!mounted) return;
           setState(() {
             _region = value;
@@ -4394,7 +4405,7 @@ class _PredictScreenState extends State<PredictScreen> {
   }
 
   Future<void> _restoreRegionAndLoad() async {
-    final savedRegion = await _loadLastRegion();
+    final savedRegion = await loadPreferredRegion();
     if (!mounted) return;
     setState(() => _region = savedRegion);
     _loadPredictionRecords();
@@ -6805,7 +6816,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class UpdateService {
-  static const String _owner = 'e5sub';
+  static const String _owner = '0bito798';
   static const String _repo = 'mark-six';
   static const String _apkName = 'app-release.apk';
   static const String _proxy = 'https://gh-proxy.com/';

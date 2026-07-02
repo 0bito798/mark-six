@@ -14,7 +14,7 @@ import hmac
 from contextlib import contextmanager
 from collections import Counter
 import re
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import urlparse
 from datetime import datetime, timedelta
 import time
 from markupsafe import escape
@@ -33,6 +33,7 @@ from activation_code_routes import activation_code_bp
 from invite_routes import invite_bp
 from api_mobile import mobile_api_bp
 from notification_service import notify_user
+from railway_db import MYSQL_CHARSET, build_database_uri
 
 # --- 配置信息 ---
 data_dir = os.path.join(os.getcwd(), 'data')
@@ -881,25 +882,11 @@ def _startup_schema_lock(timeout_seconds=120):
             except OSError:
                 pass
 
-MYSQL_CHARSET = "utf8mb4"
 MYSQL_COLLATION = os.environ.get("MYSQL_COLLATION", "utf8mb4_unicode_ci")
 
 
 def _build_database_uri(db_path):
-    db_url = os.environ.get("DATABASE_URL")
-    if db_url:
-        return db_url
-
-    db_type = os.environ.get("DB_TYPE", "sqlite").lower()
-    if db_type in ("mysql", "mariadb"):
-        host = os.environ.get("DB_HOST", "localhost")
-        port = os.environ.get("DB_PORT", "3306")
-        name = os.environ.get("DB_NAME", "mark_six")
-        user = quote_plus(os.environ.get("DB_USER", "root"))
-        password = quote_plus(os.environ.get("DB_PASSWORD", ""))
-        return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset={MYSQL_CHARSET}"
-
-    return f"sqlite:///{db_path}"
+    return build_database_uri(db_path)
 
 
 def _build_engine_options(database_uri):

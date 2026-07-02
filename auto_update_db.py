@@ -8,35 +8,21 @@
 import os
 import sqlite3
 from datetime import datetime
-from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
+from railway_db import build_database_uri, using_mysql_env
+
 # 数据库文件路径
 DB_PATH = os.path.join(os.getcwd(), 'data', 'lottery_system.db')
-DB_TYPE = os.environ.get("DB_TYPE", "sqlite").lower()
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-
-
-MYSQL_CHARSET = "utf8mb4"
 
 def _using_mysql():
-    if DB_TYPE in ("mysql", "mariadb"):
-        return True
-    return DATABASE_URL.lower().startswith("mysql")
+    return using_mysql_env()
 
 
 def _build_mysql_database_uri():
-    if DATABASE_URL:
-        return DATABASE_URL
-
-    host = os.environ.get("DB_HOST", "localhost")
-    port = os.environ.get("DB_PORT", "3306")
-    name = os.environ.get("DB_NAME", "mark_six")
-    user = quote_plus(os.environ.get("DB_USER", "root"))
-    password = quote_plus(os.environ.get("DB_PASSWORD", ""))
-    return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset={MYSQL_CHARSET}"
+    return build_database_uri(DB_PATH)
 
 
 def _mysql_table_exists(connection, table_name):
